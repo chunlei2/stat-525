@@ -1,0 +1,86 @@
+---
+title: "Chunlei2_hw03"
+author: "Chunlei Liu"
+date: "9/15/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+Q1:
+
+$h(x) = sin(x^4), \pi(x) = 1 (0 \leqq x \leqq 1), E(sin(x^4)) = \int_{0}^{1}sin(x^4)*1dx$
+
+I choose $g(x) \sim B(5, 1), g(x) = 5*x^4$ as the proposal distribution, as g(x) is close to $h(x)*\pi(x)$. So $E(sin(x^4)) = \int_{0}^{1}\frac{sin(x^4)}{g(x)}*g(x)dx$.
+
+1000 samples $x^{(1)}, x^{(2)}...,x^{(1000)}$ are chosen from the g(x). Calculate $\frac{h(x)\pi(x)}{g(x)}$ basen on X. Estimate $\mu$ by $\hat{\mu_{n}} = \frac{1}{1000}*[\frac{h(x^{(1)})\pi(x^{(1)})}{g(x^{(1)})}+ ... + \frac{h(x^{(1000)})\pi(x^{(1000)})}{g(x^{(1000)})}]$. Estimate $\sigma$ by $\sqrt{\frac{1}{1000}\hat{\sigma}}$
+
+The mean estimate is 0.1874643, the standard error estimate is 0.0002984545.
+```{r}
+set.seed(9301)
+target = function(x){
+  sin(x^4)/(x^4*dbeta(1,5,1))
+}
+n = 1000
+X = rbeta(n, 5, 1)
+mean(target(X))
+sqrt(1/1000*var(target(X)))
+```
+
+Q2:
+
+In problem 2 of homework 2, I need 1922 samples to have 1000 accepted samples. So, the proposal funtion is the normal distribution with $\mu = 1.04, \sigma^2 = 0.2, g(\theta) = \frac{1}{\sqrt{2\pi*0.2}}e^{-\frac{(x-1.04)^2}{2*0.2}}$.
+
+$E(\theta) = \int_{-\infty}^{\infty}\theta\pi(\theta|x_1,x_2,x_3,x_4,x_5)d\theta\\\;\;\;\;\;\;\;=\int_{-\infty}^{\infty}\frac{\theta\pi(\theta|x_1,x_2,x_3,x_4,x_5)}{g(\theta)}g(\theta)d\theta$
+
+So draw 1922 samples $\theta^{(1)}...\theta^{(1922)}$ from the distribution $g(\theta)$
+$W = \frac{\pi(\theta|x_1,x_2,x_3,x_4,x_5)}{g(\theta)}, h(\theta) = \theta, l(\theta) = \pi(\theta|x_1,x_2,x_3,x_4,x_5)\\w^{(1)}...w^{(1922)}, h(\theta^{(1)})...h(\theta^{(1922)})\\\tilde \mu = \frac{w^{(1)}h(\theta^{(1)})+...+w^{(1922)}h(\theta^{(1922)})}{w^{(1)}+...+w^{(1922)}}$
+
+$Var(\tilde{\mu}) \approx \frac{var_g(\frac{h(\theta)l(\theta)}{g(\theta)})+\tilde \mu^2var_g(\frac{l(\theta)}{g(\theta)})-2\tilde \mu cov(\frac{h(\theta)l(\theta)}{g(\theta)},\frac{l(\theta)}{g(\theta)} )}{nE_g^{2}(\frac{l(\theta)}{g(\theta)})}$
+
+The mean estimate is 0.8700508, the standard error estimate is 0.01056657. It is smaller than the one in the previous homework.
+
+```{r}
+set.seed(9301)
+n = 1922
+weight = function(x){
+  ((1/(pi*(1+x^2))*(1/sqrt(2*pi))^5*exp(-(1.1-x)^2/2-(0.7-x)^2/2-(1.4-x)^2/2-(1.2-x)^2/2-(0.8-x)^2/2)))/((1/sqrt(2*pi/5))*exp(-2.5*(x-1.04)^2))
+}
+target = function(x){
+  ((1/(pi*(1+x^2))*(1/sqrt(2*pi))^5*exp(-(1.1-x)^2/2-(0.7-x)^2/2-(1.4-x)^2/2-(1.2-x)^2/2-(0.8-x)^2/2))*x)/((1/sqrt(2*pi/5))*exp(-2.5*(x-1.04)^2))
+}
+X = rnorm(n, 1.04, sd = sqrt(1/5))
+sum(target(X))/sum(weight(X))
+mu = sum(target(X))/sum(weight(X))
+sqrt((var(target(X)) + mu^2*var(weight(X)) - 2*mu*cov(target(X), weight(X)))/(n*(mean(weight(X)))^2))
+```
+Q3:
+
+$\pi(x) \propto l(x) = e^{-\frac{|x|^3}{3}}, -\infty < x < \infty$ is hard to sample, $h(x) = x^2$. Find the proposal function $g(x) = \frac{1}{\sqrt{2\pi}}e^{-\frac{x^2}{2}}$ which is close to $l(x) = c\pi(x)$
+
+So draw 1000 samples $x^{(1)}...x^{(1922)}$ from the distribution $g(x)$
+$W = \frac{l(x)}{g(x)}, h(x) = x^2, l(x) = e^{-\frac{|x|^3}{3}}\\w^{(1)}...w^{(1000)}, h(x^{(1)})...h(x^{(1000)})\\\tilde \mu = \frac{w^{(1)}h(x^{(1)})+...+w^{(1000)}h(x^{(1000)})}{w^{(1)}+...+w^{(1000)}}$
+
+$Var(\tilde \mu) \approx \frac{var_g(\frac{h(x)l(x)}{g(x)})+\tilde \mu^2var_g(\frac{l(x)}{g(x)})-2\tilde \mu cov(\frac{h(x)l(x)}{g(x)},\frac{l(x)}{g(x)} )}{nE_g^{2}(\frac{l(x)}{g(x)})}$
+
+The mean estimate is 0.7321103, the standard error estimate is 0.02478644.
+
+```{r}
+set.seed(9301)
+n = 1000
+weight = function(x){
+  exp(-(abs(x)^3/3))/(1/(sqrt(2*pi*1))*exp(-x^2/(2*1)))
+}
+target = function(x){
+  (x^2)*exp(-(abs(x)^3/3))/(1/(sqrt(2*pi*1))*exp(-x^2/(2*1)))
+}
+X = rnorm(n, 0, sd = sqrt(1))
+sum(target(X))/sum(weight(X))
+mu = sum(target(X))/sum(weight(X))
+sqrt((var(target(X)) + mu^2*var(weight(X)) - 2*mu*cov(target(X), weight(X)))/(n*(mean(weight(X)))^2))
+```
+
+
+
+
+
+

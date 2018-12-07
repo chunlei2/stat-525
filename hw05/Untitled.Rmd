@@ -1,0 +1,142 @@
+---
+title: "hw05_chunlei2"
+author: "Chunlei Liu"
+date: "10/15/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Q1:
+
+The state equation is the proposal distribution. 
+
+T from 1 to 10, $\mu_0 = 0$, every time $\mu_{t} = \mu_{t-1}$ with probability 0.9 or $\mu_{t} = Z_t, Z_t \sim N(0, 1)$ with probability 0.1. 
+
+$W_0 = 1, W_t = W_{t-1}g(y_t|\mu_t)$. $g(y_t|\mu_t)$ is the density of $y_t$ given $\mu_t$, given $\mu_t, \varepsilon_t \sim N(0, 1)$, $y_t \sim N(\mu_t, 1)$
+
+The final estimation is $\frac{\sum_{j=1}^{m}h(\mu_t^{(j)})w_t^{(j)}}{\sum_{j=1}^{m}w_t^{(j)}}$.
+```{r}
+set.seed(10)
+m = 10000
+t = 10
+mu_matrix = matrix(0, m, t)
+weight_matrix = matrix(0, m, t)
+y_obs = c(0.2, -0.1, -0.4, -1.3, 1.1, -1.1, 1.1, -0.1, -2.4, 0.9)
+for (i in 1:m) {
+  mu = 0
+  weight = 1
+  for (j in 1:t){
+    p = rbinom(1,1,0.9)
+    mu = p*mu + (1-p)*rnorm(1)
+    mu_matrix[i, j] = mu
+    weight = weight*dnorm(y_obs[j], mean = mu, sd = 1)
+    weight_matrix[i, j] = weight
+  }
+  
+}
+expect = rep(0, 10)
+for (k in 1:10) {
+  expect[k] = sum(weight_matrix[, k] * mu_matrix[, k])/sum(weight_matrix[, k])
+}
+expect
+
+```
+
+
+
+
+Q2:
+
+Naive Monte Carlo:
+
+The naive Monte Carlo is generating 1000 iid samples from uniform distribution and insert into $\frac{1}{1+u}$, calculate the average.
+
+The mean is 0.6910957. The variance is 1.969141e-05.
+```{r}
+set.seed(10)
+n = 1000
+X = rep(0, n)
+for (i in 1:n){
+  u = runif(1)
+  X[i] = 1/(1 + u)
+}
+mu = mean(X)
+var_mu = 1/1000*var(X)
+mu
+var_mu
+```
+
+
+Control Variates:
+
+Using control variates method. Calculate the optimal b. Calculate the mean and variance of new variable $X(b)$.
+
+The mean is 0.6935891, the variance is 6.172178e-07. The variance is smaller than the result obtained with naive monte carlo method.
+```{r}
+set.seed(10)
+n = 1000
+X = rep(0, n)
+for (i in 1:n){
+  u = runif(1)
+  X[i] = u
+}
+b = cov(1/(1+X), (1+X))/var(1 + X)
+mu = mean(1/(1+X) - b*((1 + X) - 1.5))
+var_mu = 1/1000*var(1/(1+X) - b*((1 + X)) - 1.5)
+mu
+var_mu
+```
+
+
+
+Q3:
+
+Naive Monte Carlo in HW1 Q2:
+
+The mean is 2.711023, the variance is 0.0005780832.
+```{r}
+set.seed(10)
+#Q2
+##generate 1000 samples from uniform distribution
+set.seed(9301)
+U2 = runif(1000, 0, 1)
+##calculate the inversed cdf
+X2 = 3*(-log(1-U2))^(1/4)
+mu = mean(X2)
+var = 1/1000*var(X2)
+mu
+var
+```
+
+
+Antithetic variates:
+
+The pdf is $f(x) = \frac{4}{3}(\frac{x}{3})^3e^{-(\frac{x}{3})^4}, 0 < x < \infty$.
+
+Then the cdf is $F(x) = \int_{0}^{x}\frac{4}{3}(\frac{a}{3})^3e^{-(\frac{a}{3})^4}da\\ \;\;\;\;\;\;\;\;= -\int_{0}^{x}e^{-(\frac{a}{3})^4}d-(\frac{a}{3})^4\\\;\;\;\;\;\;\;\;= -e^{-(\frac{a}{3})^4}|_{0}^{x}\\\;\;\;\;\;\;\;\;= -(e^{-(\frac{x}{3})^4} - 1) = U, U \sim U[0,1]$.
+
+Because the cdf in range(0,1), so the uniform distribution can be used to simulate.
+$U = 1-e^{-(\frac{x}{3})^4}$, after calculation we can get $(\frac{x}{3})^4 = -log(1-U)$. 
+
+$\because x > 0, \therefore x = 3*\sqrt[4]{-log(1-U)}, x^{*} = 3*\sqrt[4]{-log(U)}$. X and $x^{*}$ follow the same distribution. 
+
+Draw iid samples $u^{(1)}, u^{(2)}, ..., u^{(1000)}$ from $U[0,1]$, at the same time we get $1-u^{(1)}, 1-u^{(2)}, ..., 1-u^{(1000)}$.
+
+The mean will be calculated by $\tilde \mu = \frac{1}{1000}(\sum_{i=1}^{1000}\frac{x+x^{*}}{2})$.
+
+The variance will be calculated by $\frac{1}{1000}\sigma^{2}$.
+
+The mean is 2.718838, the variance is 3.587899e-07. The variance is smaller than the naive monte carlo method.
+```{r}
+set.seed(10)
+U = runif(1000, 0, 1)
+N_U = 1 - U
+X = 3*(-log(1-U))^(1/4)
+N_X = 3*(-log(1-N_U))^(1/4)
+mu = mean((X+N_X)/2)
+var = 1/1000*var((X+N_X)/2)
+mu
+var
+```
+

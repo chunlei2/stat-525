@@ -1,0 +1,202 @@
+---
+author: "Yutong Dai(yutongd3@illinois.edu)"
+date: "`r Sys.Date()`"
+lecnum: "6"
+instructor: "Yuguo Chen"
+course: "STAT-525"
+term: "2018 Fall"
+output: 
+  pdf_document:
+    number_sections: yes
+    template: "../textem/template.tex"
+    keep_tex: no
+fontsize: 10pt
+bibliography: "../textem/book.bib"
+link-citations: yes
+linkcolor: "black"
+csl: "../textem/ieee.csl"
+header-includes:
+  - \newcommand{\iid}{\overset{iid}\sim}
+  - \usepackage{graphicx}
+  - \usepackage{float}
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(fig.height = 4)
+knitr::opts_chunk$set(fig.pos = "H")
+```
+
+# Question 1
+
+## Solution {-}
+
+General setups:
+
+* $T(y|x) = N(x, 4)$
+
+* The time horizon is set to 50000, and  the burn-in sample size is set to 45000.
+
+```{r, echo=TRUE, cache=TRUE}
+ratio <- function(x,y){
+ return(min(1, (exp(-y^4-y))/ (exp(-x^4-x)))) 
+}
+x_seq <- 0
+acceptance <- 0
+x_seq_length <- 50000
+for (i in seq_len(x_seq_length)){
+  x <- tail(x_seq, n=1)
+  y <- rnorm(n=1, mean=x, sd=2)
+  u <- runif(1)
+  temp <- ifelse(ratio(x, y) >= u, y, x)
+  if (ratio(x, y) >= u){
+    acceptance <- acceptance + 1
+  }
+  x_seq <- c(x_seq, temp)
+}
+acceptance_rate <- acceptance / x_seq_length
+x_seq_accepted <- tail(x_seq, 5000)
+```
+
+```{r, echo=TRUE}
+muhat <- mean(x_seq_accepted)
+temp <- sum(acf(x_seq_accepted, length(x_seq_accepted), plot = FALSE)$acf)
+std <- sqrt(var(x_seq_accepted) * (2 * temp + 1) / length(x_seq_accepted))
+```
+
+* The acceptance rate of my algorithm is `r acceptance_rate`.
+
+* The autocorrelation plot of my accepted samples are given in \autoref{acf}
+
+* The mean of the desity function is `r muhat`.
+
+* The standar error of the estimator is `r std`.
+
+```{r, cache=TRUE, fig.cap="\\label{acf}The autocorrelation of the last 5000 samples."}
+acf(x_seq_accepted, main = "")
+```
+
+
+
+**Remark**
+
+From \autoref{compare}, we know that the samples are of good quality.
+
+```{r, fig.cap="\\label{compare}The histgram of the last 5000 samples from the simulated Markov Chain."}
+xs <- seq(-5,5, length.out = 1000)
+hist(x_seq_accepted,main = "", freq=FALSE, ylim = c(0,1), ylab = "probability", xlab="x")
+lines(xs, (exp(-xs^4-xs)/2.138695), type="l", col="red")
+```
+
+
+<!-- Sample by the rejection method -->
+<!-- ```{r} -->
+<!-- l <- function(x){ -->
+<!--   return(exp(-x^4-x)) -->
+<!-- } -->
+<!-- x_rejection_seq <- NULL -->
+
+<!-- for (i in seq_len(10000)){ -->
+<!--   x <- rexp(1, rate=1) -->
+<!--   if (runif(1) <= (l(x) / dexp(x))){ -->
+<!--     x_rejection_seq <- c(x_rejection_seq, x) -->
+<!--   } -->
+<!-- } -->
+<!-- hist(x_rejection_seq) -->
+<!-- ``` -->
+
+# Question 2
+
+## Solution {-}
+
+
+General setups:
+
+$T(T_{t+1}|T_{t}) = 0.5\pi(T_{t}^+)I(T_{t+1}=T_{t}^+) + 0.5\pi(T_{t}^+)I(T_{t+1}=T_{t}^-)$, where $T_{t}^+, T_{t}^-$ represents the two transformation patterns respectively. Clearly, this is symmetric.
+
+* The time horizon is set to 20000, and  the burn-in sample size is set to 19500.
+
+```{r, echo=TRUE, cache=TRUE}
+rm(list=ls())
+T0 <- read.delim("xid-36891322_1.txt", row.names=1, sep="", stringsAsFactors=FALSE)[1:12, 1:12]
+
+easy_ratio <- function(seq1, seq2){
+  ratio <- 1
+  seq1 <- sort(seq1); seq2 <- sort(seq2)
+  for (i in seq_len(length(seq1))){
+    if (seq1[i] > seq2[i]){
+      ratio <- ratio * prod(seq((seq2[i] + 1),  seq1[i]))
+    }else if(seq1[i] < seq2[i]){
+      ratio <- ratio / prod(seq((seq1[i] + 1),  seq2[i]))
+    }
+  }
+  return(ratio)
+}
+
+sample_new <- function(Tx){
+  #browser()
+  row_idx <- sort(sample.int(12, 2, replace = FALSE))
+  col_idx <- sort(sample.int(12, 2, replace = FALSE))
+  if (rbinom(1,1,0.5) == 1){
+      ratio <- (Tx[row_idx[1],col_idx[2]] * Tx[row_idx[2],col_idx[1]]) / 
+        ((Tx[row_idx[1],col_idx[1]] + 1) * (Tx[row_idx[2],col_idx[2]] + 1))
+      change <- matrix(c(1,-1,-1,1), byrow = T, nrow=2)
+  }else{
+      ratio <- (Tx[row_idx[1],col_idx[1]] * Tx[row_idx[2],col_idx[2]]) /
+        ((Tx[row_idx[1],col_idx[2]] + 1) * (Tx[row_idx[2],col_idx[1]] + 1))
+      change <- matrix(c(-1,1,1,-1), byrow = T, nrow=2)
+    }
+  rxy <- min(1, ratio)
+  if (runif(1) <= rxy){
+    Ty <- Tx
+    Ty[row_idx[1],col_idx[1]] <- Tx[row_idx[1],col_idx[1]] + change[1,1]
+    Ty[row_idx[1],col_idx[2]] <- Tx[row_idx[1],col_idx[2]] + change[1,2]
+    Ty[row_idx[2],col_idx[1]] <- Tx[row_idx[2],col_idx[1]] + change[2,1]
+    Ty[row_idx[2],col_idx[2]] <- Tx[row_idx[2],col_idx[2]] + change[2,2]
+    accept <- 1
+  }else{
+    Ty <- Tx
+    accept <- 0
+  }
+  PTy_PT0 <- 1 / easy_ratio(as.vector(as.matrix(Ty)), as.vector(as.matrix(T0)))
+  results <- list(Ty=Ty, accept=accept, PTy_PT0 = PTy_PT0)
+  return(results)
+}
+
+T_seq <- list()
+T_seq[[1]] <- T0
+acceptance <- 0
+T_seq_length <- 20000
+compare_seq <- NULL
+for (i in seq_len(T_seq_length)){
+  Tx <- T_seq[[i]]
+  results <- sample_new(Tx)
+  T_seq[[i+1]] <- results$Ty
+  acceptance <- acceptance + results$accept
+  compare_seq <- c(compare_seq, results$PTy_PT0 <= 1)
+}
+acceptance_rate <- acceptance / T_seq_length
+```
+
+```{r, echo=TRUE}
+seq_accepted_final <- tail(compare_seq, 500)
+p_val <- mean(seq_accepted_final)
+h_T <- as.numeric(seq_accepted_final)
+h_T <- as.numeric(seq_accepted_final)
+temp <- 1 + 2 * (sum(acf(h_T, 500, plot = FALSE)$acf) - 1)
+std <- sqrt(abs(var(h_T) * temp) / 500)
+```
+
+So the
+
+* P-value is $`r p_val`$.
+* And the standar error is $`r std`$.
+
+**Remark:**
+
+The theoretical result is approximately
+
+```{r}
+fisher.test(T0, simulate.p.value=TRUE, B=10000)
+```
+

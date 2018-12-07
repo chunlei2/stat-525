@@ -1,0 +1,81 @@
+---
+title: "chunlei2_hw01"
+author: "Chunlei Liu"
+date: "8/30/2018"
+output: html_document
+---
+Q1:
+
+Want to estimate $\mu = E_\pi(sin(X^4)) = \int sin(X^4)*1dx$.
+
+Because $X \sim U[0, 1]$, 1 is the probability density function of X.
+
+Draw iid samples $x^{(1)}, x^{(2)}, ..., x^{(1000)}$ from $U[0,1]$ distribution. Estimate $\mu$ by $\hat{\mu_{n}} = \frac{1}{1000}*[sin({x^{(1)}}^4)+ ... + sin({x^{(1000)}}^4)]$
+
+The estimate is 0.18 and the standard error is 0.24.
+```{r}
+#Q1
+##generate 1000 samples from uniform distribution
+set.seed(9301)
+X1 = runif(1000, 0, 1)
+mean(sin(X1^4))
+sqrt(1/1000*var(sin(X1^4)))
+```
+Q2:
+
+The pdf is $f(x) = \frac{4}{3}(\frac{x}{3})^3e^{-(\frac{x}{3})^4}, 0 < x < \infty$.
+
+Then the cdf is $F(x) = \int_{0}^{x}\frac{4}{3}(\frac{a}{3})^3e^{-(\frac{a}{3})^4}da\\ \;\;\;\;\;\;\;\;= -\int_{0}^{x}e^{-(\frac{a}{3})^4}d-(\frac{a}{3})^4\\\;\;\;\;\;\;\;\;= -e^{-(\frac{a}{3})^4}|_{0}^{x}\\\;\;\;\;\;\;\;\;= -(e^{-(\frac{x}{3})^4} - 1) = U, U \sim U[0,1]$.
+
+Because the cdf in range(0,1), so the uniform distribution can be used to simulate.
+$U = 1-e^{-(\frac{x}{3})^4}$, after calculation we can get $(\frac{x}{3})^4 = -log(1-U)$. $\because x > 0, \therefore x = 3*\sqrt[4]{-log(1-U)}$.
+
+Draw iid samples $u^{(1)}, u^{(2)}, ..., u^{(1000)}$ from $U[0,1]$
+
+Insert them into the formula, achieve the 1000 samples from the Weibull distribution.
+
+The mean is 2.71. The variance is 0.58.
+```{r}
+#Q2
+##generate 1000 samples from uniform distribution
+set.seed(9301)
+U2 = runif(1000, 0, 1)
+##calculate the inversed cdf
+X2 = 3*(-log(1-U2))^(1/4)
+mean(X2)
+var(X2)
+```
+Q3:
+
+The pdf is $f(x) = \begin{cases} 1-x, 0 \leqq x \leqq 1\\ x-1, 1< x \leqq2\end{cases}$
+
+The cdf is $F(x) = \begin{cases} \int_{0}^{x}(1-a)da, 0 \leqq x \leqq 1\\ \int_{0}^{x}(a-1)da, 1< x \leqq2\end{cases}\\\;\;\;\;\;\;\;\; =\begin{cases} x-\frac{1}{2}x^2, 0 \leqq x \leqq 1\\ \frac{1}{2}x^2-x+1, 1< x \leqq2\end{cases}$
+
+The area of two parts is same. So we simulate 5 samples from the uniform distribution. If the value is bigger than 0.5, it should be in the second part. Otherwise it should be in the first part.
+
+For the first part:
+$x-\frac{1}{2}x^2 = u, (0 \leqq u \leqq\frac{1}{2})\\(x-1)^2 = 1-2u\\\because 0 \leqq x \leqq 1, \therefore x =1 -\sqrt{1-2u}$
+
+For the second part:
+$1+\frac{1}{2}x^2-x = u, (\frac{1}{2} < u \leqq 1)\\(x-1)^2 = 2u-1\\\because 1 < x \leqq 2, \therefore x = 1 + \sqrt{2u-1}$
+
+Draw iid samples $u^{(1)}, u^{(2)}, ..., u^{(5)}$ from $U[0,1]$
+
+Divide them based on the cutoff 0.5. Insert them into the formula, achieve 5 samples from the above distribution.
+
+```{r}
+#Q3
+##generate 5 samples from uniform distribution
+set.seed(9301)
+U3 = runif(5, 0, 1)
+##if u2 > 0.5, it should belong to the second part of the function.
+U3_1 = U3[U3 < 0.5]
+U3_2 = U3[U3 > 0.5]
+##calculate the truncated CDF
+X3_1 = 1 - sqrt(1 - 2*U3_1)
+X3_2 = 1 + sqrt(2*U3_2 - 1)
+X3 = c(X3_1, X3_2)
+X3
+```
+
+
